@@ -32,21 +32,19 @@ const getSPXTrackingInfo = async (trackingCode) => {
             };
         }
         
-        // Phân tích trạng thái
-        const parts = trackingData.split('Đã giao hàng');
-        if (parts.length > 1) {
-            const rawLog = parts[1].split('Đăng nhập')[0].trim();
-            // Tách thành các dòng
-            const lines = rawLog.split('\n').map(l => l.trim()).filter(l => l !== '');
-            
-            // lines thường có dạng: ['14:35:46', '18 Apr 2026', 'Giao hàng thành công', ...]
-            let status = '';
-            if (lines.length >= 3) {
-                // Trạng thái mới nhất nằm ở index 2
-                status = `${lines[2]} (${lines[0]} ${lines[1]})`;
-            } else {
-                status = trackingData.includes('Giao hàng thành công') ? 'Giao hàng thành công' : 'Đang cập nhật lịch trình...';
-            }
+        // In log raw data để kiểm tra trên máy chủ Render
+        console.log("=> Raw Data:", trackingData.substring(0, 400).replace(/\n/g, ' | '));
+
+        // Phân tích trạng thái bằng biểu thức chính quy (Regex)
+        // Định dạng cần tìm: 14:35:46 \n 18 Apr 2026 \n Trạng thái...
+        const regex = /(\d{2}:\d{2}:\d{2})\s+(\d{2} [a-zA-Z]{3} \d{4})\s+([^\n]+)/;
+        const match = trackingData.match(regex);
+        
+        if (match) {
+            const time = match[1];
+            const date = match[2];
+            const statusText = match[3].trim();
+            const status = `${statusText} (${time} ${date})`;
 
             console.log(`=> Lấy thành công: ${status}`);
             console.log(`=============================================\n`);
@@ -57,6 +55,8 @@ const getSPXTrackingInfo = async (trackingCode) => {
                 message: "Thành công"
             };
         } else {
+            console.log("=> Không tìm thấy thời gian trong chuỗi!");
+            console.log(`=============================================\n`);
             return {
                 success: true,
                 status: 'Chưa có thông tin lịch trình (Chờ lấy hàng)',

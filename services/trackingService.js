@@ -9,11 +9,22 @@ const getSPXTrackingInfo = async (trackingCode) => {
         browser = await puppeteer.launch({ 
             headless: 'new',
             executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
-            args: ['--no-sandbox', '--disable-setuid-sandbox']
+            args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--single-process']
         });
         const page = await browser.newPage();
         
-        await page.goto(`https://spx.vn/track?${trackingCode}`, { waitUntil: 'networkidle2', timeout: 20000 });
+        // Tối ưu tốc độ: Chặn tải hình ảnh, font và CSS vì bot chỉ cần đọc Text
+        await page.setRequestInterception(true);
+        page.on('request', (req) => {
+            if (['image', 'stylesheet', 'font', 'media'].includes(req.resourceType())) {
+                req.abort();
+            } else {
+                req.continue();
+            }
+        });
+        
+        // Tăng timeout lên 60 giây vì máy chủ miễn phí xử lý khá chậm
+        await page.goto(`https://spx.vn/track?${trackingCode}`, { waitUntil: 'networkidle2', timeout: 60000 });
         
         // Đợi 2 giây cho giao diện render xong dữ liệu
         await new Promise(r => setTimeout(r, 2000));

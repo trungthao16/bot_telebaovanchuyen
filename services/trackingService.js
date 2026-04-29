@@ -13,11 +13,21 @@ const getSPXTrackingInfo = async (trackingCode) => {
         });
         const page = await browser.newPage();
         
-        // Tăng timeout lên 60 giây vì máy chủ miễn phí xử lý khá chậm
-        await page.goto(`https://spx.vn/track?${trackingCode}`, { waitUntil: 'networkidle2', timeout: 60000 });
+        // Tối ưu tốc độ tải: Chỉ chặn hình ảnh và font chữ (GIỮ LẠI CSS) để web load siêu nhanh mà không lỗi giao diện
+        await page.setRequestInterception(true);
+        page.on('request', (req) => {
+            if (['image', 'font', 'media'].includes(req.resourceType())) {
+                req.abort();
+            } else {
+                req.continue();
+            }
+        });
         
-        // Đợi 5 giây cho giao diện React tải xong dữ liệu từ API của Shopee
-        await new Promise(r => setTimeout(r, 5000));
+        // Đổi thành domcontentloaded để tránh bị kẹt timeout 60s do các script phân tích của Shopee
+        await page.goto(`https://spx.vn/track?${trackingCode}`, { waitUntil: 'domcontentloaded', timeout: 60000 });
+        
+        // Cho Shopee hẳn 10 giây để kéo dữ liệu API và hiển thị lên màn hình
+        await new Promise(r => setTimeout(r, 10000));
 
         // Lấy text hiển thị
         const trackingData = await page.evaluate(() => document.body.innerText);

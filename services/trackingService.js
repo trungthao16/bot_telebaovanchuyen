@@ -9,7 +9,7 @@ const getSPXTrackingInfo = async (trackingCode) => {
         browser = await puppeteer.launch({ 
             headless: 'new',
             executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
-            args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--single-process']
+            args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
         });
         const page = await browser.newPage();
         
@@ -19,8 +19,12 @@ const getSPXTrackingInfo = async (trackingCode) => {
         // Đi tới trang và chờ 60s
         await page.goto(`https://spx.vn/track?${trackingCode}`, { waitUntil: 'domcontentloaded', timeout: 60000 });
         
-        // Cho Shopee hẳn 10 giây để kéo dữ liệu API và hiển thị lên màn hình
-        await new Promise(r => setTimeout(r, 10000));
+        // Chờ cho đến khi Shopee thực sự hiện chữ lên màn hình (React render thành công)
+        try {
+            await page.waitForFunction(() => document.body.innerText.length > 50, { timeout: 20000 });
+        } catch (e) {
+            console.log("=> Lỗi: Quá 20s nhưng giao diện vẫn trắng tinh!");
+        }
 
         // Lấy text hiển thị
         const trackingData = await page.evaluate(() => document.body.innerText);

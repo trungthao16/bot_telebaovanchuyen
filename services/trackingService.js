@@ -13,17 +13,10 @@ const getSPXTrackingInfo = async (trackingCode) => {
         });
         const page = await browser.newPage();
         
-        // Tối ưu tốc độ tải: Chỉ chặn hình ảnh và font chữ (GIỮ LẠI CSS) để web load siêu nhanh mà không lỗi giao diện
-        await page.setRequestInterception(true);
-        page.on('request', (req) => {
-            if (['image', 'font', 'media'].includes(req.resourceType())) {
-                req.abort();
-            } else {
-                req.continue();
-            }
-        });
+        // Giả lập làm trình duyệt máy tính người thật để vượt qua bức tường lửa chặn Bot của Shopee
+        await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
         
-        // Đổi thành domcontentloaded để tránh bị kẹt timeout 60s do các script phân tích của Shopee
+        // Đi tới trang và chờ 60s
         await page.goto(`https://spx.vn/track?${trackingCode}`, { waitUntil: 'domcontentloaded', timeout: 60000 });
         
         // Cho Shopee hẳn 10 giây để kéo dữ liệu API và hiển thị lên màn hình
@@ -31,6 +24,11 @@ const getSPXTrackingInfo = async (trackingCode) => {
 
         // Lấy text hiển thị
         const trackingData = await page.evaluate(() => document.body.innerText);
+        
+        // Bắt lỗi trang trắng nếu Shopee chặn truy cập
+        if (!trackingData.trim()) {
+            console.log("=> Lỗi: Trang web trả về trắng. HTML:", (await page.content()).substring(0, 300));
+        }
         await browser.close();
 
         // Kiểm tra mã không tồn tại
